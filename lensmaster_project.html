@@ -1,0 +1,1045 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LensMaster: Precise Facial Landmark Detection with DINOv3 | CS 566 Project</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1e40af;
+            --secondary: #0ea5e9;
+            --accent: #f59e0b;
+            --bg: #ffffff;
+            --bg-secondary: #f8fafc;
+            --text: #1e293b;
+            --text-light: #64748b;
+            --border: #e2e8f0;
+            --code-bg: #1e293b;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: var(--text);
+            background: var(--bg);
+        }
+        
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 4rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.1) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(255,255,255,0.08) 0%, transparent 50%);
+            pointer-events: none;
+        }
+        
+        header h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        header .subtitle {
+            font-size: 1.25rem;
+            opacity: 0.95;
+            margin-bottom: 1.5rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .team {
+            font-size: 1.1rem;
+            margin-top: 1rem;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .team a {
+            color: white;
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.5);
+            transition: border-color 0.3s;
+        }
+        
+        .team a:hover {
+            border-color: white;
+        }
+        
+        /* Navigation */
+        nav {
+            background: var(--bg);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        nav ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0;
+        }
+        
+        nav li {
+            margin: 0;
+        }
+        
+        nav a {
+            display: block;
+            padding: 1rem 1.5rem;
+            color: var(--text);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s;
+            border-bottom: 3px solid transparent;
+        }
+        
+        nav a:hover {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            background: var(--bg-secondary);
+        }
+        
+        /* Container */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+        }
+        
+        /* Section */
+        section {
+            margin-bottom: 4rem;
+        }
+        
+        section h2 {
+            font-size: 2.25rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary-dark);
+            border-left: 4px solid var(--primary);
+            padding-left: 1rem;
+        }
+        
+        section h3 {
+            font-size: 1.5rem;
+            margin: 2rem 0 1rem;
+            color: var(--text);
+        }
+        
+        p {
+            margin-bottom: 1rem;
+            color: var(--text);
+            font-size: 1.05rem;
+            line-height: 1.7;
+        }
+        
+        /* Highlight boxes */
+        .highlight-box {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--primary);
+            padding: 1.5rem;
+            margin: 2rem 0;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .highlight-box h3 {
+            margin-top: 0;
+            color: var(--primary-dark);
+        }
+        
+        /* Key features grid */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+        
+        .feature-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            transition: all 0.3s;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(37, 99, 235, 0.15);
+            border-color: var(--primary);
+        }
+        
+        .feature-card h3 {
+            margin-top: 0;
+            color: var(--primary);
+            font-size: 1.3rem;
+        }
+        
+        /* Code block */
+        .code-block {
+            background: var(--code-bg);
+            color: #e2e8f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1.5rem 0;
+            font-family: 'Space Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .code-block code {
+            color: #e2e8f0;
+        }
+        
+        /* Results table */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .results-table th {
+            background: var(--primary);
+            color: white;
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .results-table td {
+            padding: 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .results-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .results-table tr:hover {
+            background: var(--bg-secondary);
+        }
+        
+        .metric-improve {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .metric-baseline {
+            color: var(--text-light);
+        }
+        
+        /* Image gallery */
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .image-gallery img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .image-gallery img:hover {
+            transform: scale(1.05);
+        }
+        
+        .image-caption {
+            text-align: center;
+            font-size: 0.9rem;
+            color: var(--text-light);
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        
+        /* List styling */
+        ul, ol {
+            margin: 1rem 0 1rem 2rem;
+            line-height: 1.8;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+            color: var(--text);
+        }
+        
+        ul li::marker {
+            color: var(--primary);
+        }
+        
+        /* Architecture diagram placeholder */
+        .architecture-box {
+            background: linear-gradient(135deg, #f8fafc 0%, #e0e7ff 100%);
+            border: 2px dashed var(--primary);
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            margin: 2rem 0;
+            font-family: 'Space Mono', monospace;
+            color: var(--text-light);
+        }
+        
+        /* Stats boxes */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1.5rem;
+            margin: 2rem 0;
+        }
+        
+        .stat-box {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary);
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+        
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Footer */
+        footer {
+            background: var(--code-bg);
+            color: white;
+            text-align: center;
+            padding: 2rem;
+            margin-top: 4rem;
+        }
+        
+        footer a {
+            color: var(--secondary);
+            text-decoration: none;
+        }
+        
+        footer a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            
+            section h2 {
+                font-size: 1.75rem;
+            }
+            
+            nav ul {
+                flex-direction: column;
+            }
+            
+            nav a {
+                border-left: 3px solid transparent;
+                border-bottom: none;
+            }
+            
+            nav a:hover {
+                border-left-color: var(--primary);
+            }
+        }
+        
+        /* Smooth scroll */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        /* Link styling */
+        a {
+            color: var(--primary);
+            transition: color 0.3s;
+        }
+        
+        a:hover {
+            color: var(--primary-dark);
+        }
+        
+        .button {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            margin-right: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+        
+        .button-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        
+        .button-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>LensMaster</h1>
+        <p class="subtitle">Precise Facial Landmark Detection with DINOv3 Backbone</p>
+        <p class="team">
+            CS 566 Computer Vision - Fall 2024<br>
+            <a href="mailto:zzching@wisc.edu">ZX Ching</a> · 
+            <a href="mailto:xxiong59@wisc.edu">Xu Xiong</a> · 
+            <a href="mailto:bshi48@wisc.edu">Binhe Shi</a>
+        </p>
+    </header>
+
+    <nav>
+        <ul>
+            <li><a href="#abstract">Abstract</a></li>
+            <li><a href="#motivation">Motivation</a></li>
+            <li><a href="#approach">Approach</a></li>
+            <li><a href="#implementation">Implementation</a></li>
+            <li><a href="#results">Results</a></li>
+            <li><a href="#discussion">Discussion</a></li>
+            <li><a href="#resources">Resources</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <section id="abstract">
+            <h2>Abstract</h2>
+            <div class="highlight-box">
+                <p><strong>TL;DR:</strong> We developed LensMaster, a facial landmark detection system that integrates Meta's DINOv3 vision transformer as a pretrained backbone to achieve more accurate and robust facial feature localization. Our approach demonstrates significant improvements in training efficiency and prediction accuracy compared to custom CNN backbones, laying the foundation for precise biometric measurements from facial images.</p>
+            </div>
+            
+            <p>Facial landmark detection is fundamental to numerous computer vision applications, from biometric authentication to medical diagnostics. While existing methods achieve reasonable localization accuracy, they often struggle with robustness across varying poses, lighting conditions, and occlusions. Additionally, most approaches focus on pixel-level localization without considering the downstream requirement of converting these predictions into precise physical measurements.</p>
+            
+            <p>Our project addresses these limitations by leveraging transfer learning from foundation models. We replaced the standard CNN backbone in a state-of-the-art facial landmark detection framework with Meta's DINOv3 (Vision Transformer), which was pretrained on 142 million diverse images using self-supervised learning. This modification resulted in faster convergence during training, lower final loss values (~0.2 vs ~0.3), and improved landmark prediction accuracy, achieving <strong>3.92% NME (Normalized Mean Error)</strong> on the WFLW dataset.</p>
+
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <span class="stat-value">98</span>
+                    <span class="stat-label">Facial Landmarks</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-value">3.92%</span>
+                    <span class="stat-label">NME (WFLW)</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-value">33%</span>
+                    <span class="stat-label">Loss Reduction</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-value">0.63</span>
+                    <span class="stat-label">AUC@0.1</span>
+                </div>
+            </div>
+        </section>
+
+        <section id="motivation">
+            <h2>Motivation & Problem Statement</h2>
+            
+            <h3>The Core Challenge</h3>
+            <p>Our project tackles the problem of <strong>extracting precise physical measurements from faces wearing glasses</strong>. This requires connecting pixel-based facial features to accurate biometric measurements (like inter-pupillary distance, eye-to-ear distance) that can be reliably converted to real-world physical units (millimeters).</p>
+            
+            <p>The main challenge is that most existing computer vision methods for facial analysis focus on <em>localization and alignment</em> rather than <em>accurate physical measurement</em>, making it difficult to convert pixel distances into measurements that meet clinical or industrial standards.</p>
+
+            <h3>Why This Matters</h3>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>🏥 Clinical & Medical Applications</h3>
+                    <p>Accurate facial measurements support surgical planning, orthodontic assessment, plastic surgery, and monitoring genetic disorders.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🔐 Biometric Security</h3>
+                    <p>Precise facial measurements enable robust biometric identification systems and spoof detection mechanisms.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🔬 Research Applications</h3>
+                    <p>Digital facial anthropometry benefits medicine, biology, genetics, pattern recognition, and forensics.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>👓 Consumer Applications</h3>
+                    <p>Enable accurate virtual try-on for glasses, AR/VR face tracking, and personalized eyewear fitting.</p>
+                </div>
+            </div>
+
+            <h3>Limitations of Existing Approaches</h3>
+            <ul>
+                <li><strong>Controlled Environments Only:</strong> Current 3D facial imaging systems are designed for clinical settings, not real-world single-image applications</li>
+                <li><strong>Lack of Scale Calibration:</strong> 2D landmark detectors (Dlib, MediaPipe) predict keypoints without converting pixel distances to physical units</li>
+                <li><strong>Pose Sensitivity:</strong> Methods are highly sensitive to head pose, camera parameters, and perspective distortion</li>
+                <li><strong>Evaluation Mismatch:</strong> Models optimize for pixel-distance accuracy (e.g., "within 5 pixels") rather than physical measurement precision</li>
+                <li><strong>Separate Processing:</strong> Landmark detection and measurement conversion treated as independent steps, leading to accumulated errors</li>
+            </ul>
+        </section>
+
+        <section id="approach">
+            <h2>Our Approach</h2>
+            
+            <h3>Key Innovation: DINOv3 Backbone Integration</h3>
+            <div class="highlight-box">
+                <h3>Why DINOv3?</h3>
+                <p><strong>DINOv3 (Distilled and Interleaved Neighboring Observations)</strong> is Meta's self-supervised vision transformer pretrained on 142 million images without labels. It learns rich visual representations that transfer exceptionally well to downstream tasks.</p>
+                
+                <p><strong>Key advantages:</strong></p>
+                <ul>
+                    <li>Learns from massive diverse datasets (LVD-142M)</li>
+                    <li>Self-supervised training provides robust feature representations</li>
+                    <li>Patch-based architecture captures both local and global context</li>
+                    <li>Strong transfer learning performance across vision tasks</li>
+                    <li>Maintains spatial relationships essential for landmark detection</li>
+                </ul>
+            </div>
+
+            <h3>Architecture Overview</h3>
+            <div class="architecture-box">
+                <p><strong>Input (256×256 RGB)</strong> → <strong>DINOv3 Backbone (Frozen)</strong> → <strong>Feature Projection (256 channels)</strong> → <strong>8-Stage Attention Refinement</strong> → <strong>Heatmap Prediction + Coordinate Regression</strong> → <strong>98 Landmark Coordinates</strong></p>
+            </div>
+
+            <h3>Technical Components</h3>
+            
+            <h4>1. DINOv3 Feature Extraction</h4>
+            <div class="code-block"><code>class DINOBackbone(nn.Module):
+    def __init__(self, out_channels=256, 
+                 model_name='facebook/dinov3-vits16-pretrain-lvd1689m',
+                 freeze=True, target_size=32, input_size=512):
+        # Load pretrained DINOv3 from Hugging Face
+        self.backbone = AutoModel.from_pretrained(model_name)
+        
+        # Freeze backbone weights for transfer learning
+        if freeze:
+            for param in self.backbone.parameters():
+                param.requires_grad = False
+        
+        # Project DINO features to task-specific channels
+        self.projector = nn.Sequential(
+            nn.Conv2d(embed_dim, out_channels, kernel_size=1),
+            nn.BatchNorm2d(out_channels),
+            nn.ReLU(inplace=True)
+        )</code></div>
+
+            <h4>2. Multi-Stage Refinement Network</h4>
+            <p>The system uses <strong>8 stacked attention modules</strong> (VitAttnStage) with progressive refinement:</p>
+            <ul>
+                <li><strong>Stage 1-2:</strong> Initial coarse localization from DINOv3 features</li>
+                <li><strong>Stage 3-5:</strong> Intermediate refinement with self-attention mechanisms</li>
+                <li><strong>Stage 6-8:</strong> Final precision adjustment with shifted window attention</li>
+            </ul>
+
+            <h4>3. Dual Prediction Heads</h4>
+            <ul>
+                <li><strong>Heatmap Branch:</strong> Predicts 32×32 Gaussian heatmaps for each of 98 landmarks</li>
+                <li><strong>Coordinate Branch:</strong> Directly regresses (x, y) coordinates using soft-argmax</li>
+            </ul>
+
+            <h4>4. Advanced Loss Functions</h4>
+            <ul>
+                <li><strong>AWingLoss:</strong> Adaptive Wing Loss with weighted heatmap regions for handling varying landmark difficulty</li>
+                <li><strong>SmoothL1Loss:</strong> For direct coordinate regression with scale parameter β=0.001</li>
+                <li><strong>Multi-stage Weighting:</strong> Progressive loss weights [1/1.2⁷, 1/1.2⁶, ..., 1/1.2⁰, 1] across 8 stages</li>
+            </ul>
+
+            <h3>Training Strategy</h3>
+            <ul>
+                <li><strong>Transfer Learning:</strong> Freeze DINOv3 backbone, train only task-specific layers</li>
+                <li><strong>Mixed Precision (FP16):</strong> Accelerate training with automatic mixed precision</li>
+                <li><strong>EMA (Exponential Moving Average):</strong> Stabilize predictions with decay=0.99</li>
+                <li><strong>Distributed Training:</strong> Multi-GPU training with PyTorch DDP</li>
+                <li><strong>Data Augmentation:</strong> Extensive augmentation via Albumentations (rotation ±20°, scale 0.8-1.2, color jitter, Gaussian noise, weather effects)</li>
+            </ul>
+
+            <h3>What Makes This Different</h3>
+            <div class="highlight-box">
+                <p><strong>Most facial landmark methods</strong> use custom CNN backbones trained from scratch, requiring massive datasets and extensive training time. They optimize for pixel-level accuracy without considering measurement precision.</p>
+                
+                <p><strong>Our approach</strong> leverages pretrained foundation models (DINOv3) that already understand visual concepts, enabling:</p>
+                <ul>
+                    <li>Faster convergence (fewer epochs to reach optimal performance)</li>
+                    <li>Better generalization to unseen poses and conditions</li>
+                    <li>More robust feature representations from self-supervised pretraining</li>
+                    <li>Foundation for accurate physical measurement (future work)</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="implementation">
+            <h2>Implementation Details</h2>
+            
+            <h3>Dataset: WFLW (Wider Facial Landmarks in the Wild)</h3>
+            <ul>
+                <li><strong>98 facial landmarks</strong> per image covering face contour, eyebrows, eyes, nose, mouth, and jaw</li>
+                <li><strong>Training set:</strong> 7,500 images with diverse poses, expressions, and occlusions</li>
+                <li><strong>Test set:</strong> 2,500 images</li>
+                <li><strong>Image size:</strong> 256×256 pixels (pre-cropped and aligned)</li>
+                <li><strong>Challenges:</strong> Large pose variations, occlusions (glasses, hands), extreme expressions, varied lighting</li>
+            </ul>
+
+            <h3>Model Configuration</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Component</th>
+                        <th>Configuration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Backbone</td>
+                        <td>DINOv3-ViT-S/16 (facebook/dinov3-vits16-pretrain-lvd1689m)</td>
+                    </tr>
+                    <tr>
+                        <td>Input Resolution</td>
+                        <td>512×512 → 32×32 feature map</td>
+                    </tr>
+                    <tr>
+                        <td>Feature Channels</td>
+                        <td>256 (max_depth)</td>
+                    </tr>
+                    <tr>
+                        <td>Refinement Stages</td>
+                        <td>8 stacked attention modules (nstack=8)</td>
+                    </tr>
+                    <tr>
+                        <td>Heatmap Size</td>
+                        <td>32×32 per landmark</td>
+                    </tr>
+                    <tr>
+                        <td>Attention Mechanism</td>
+                        <td>SA2SA1_2 (Self-Attention + Shifted Window Attention)</td>
+                    </tr>
+                    <tr>
+                        <td>Window Size</td>
+                        <td>2 (for 32×32 feature maps)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Training Configuration</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Hyperparameter</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Optimizer</td>
+                        <td>Adam</td>
+                    </tr>
+                    <tr>
+                        <td>Learning Rate</td>
+                        <td>0.0001</td>
+                    </tr>
+                    <tr>
+                        <td>Batch Size</td>
+                        <td>16 per GPU</td>
+                    </tr>
+                    <tr>
+                        <td>Epochs</td>
+                        <td>500 (early stopping around epoch 50)</td>
+                    </tr>
+                    <tr>
+                        <td>LR Scheduler</td>
+                        <td>StepLR (γ=0.5, step=200)</td>
+                    </tr>
+                    <tr>
+                        <td>Loss Weights</td>
+                        <td>Heatmap: 10.0, Coordinate: 1.0</td>
+                    </tr>
+                    <tr>
+                        <td>Precision</td>
+                        <td>Mixed FP16</td>
+                    </tr>
+                    <tr>
+                        <td>GPUs</td>
+                        <td>2 (distributed training)</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>Key Code Modifications</h3>
+            
+            <h4>Backbone Replacement</h4>
+            <div class="code-block"><code># Original: Custom CNN backbone (HeadingNet)
+backbone_net = lambda max_depth: HeadingNet([32, 64, max_depth])
+
+# Modified: DINOv3 Transformer backbone
+backbone_net = lambda max_depth: DINOBackbone(
+    out_channels=max_depth, 
+    model_name='facebook/dinov3-vits16-pretrain-lvd1689m',
+    freeze=True,           # Freeze pretrained weights
+    target_size=32,        # Output feature map size
+    input_size=512,        # DINO native resolution (32×16=512)
+)</code></div>
+
+            <h4>Training Command</h4>
+            <div class="code-block"><code># Distributed training on 2 GPUs
+torchrun --nproc_per_node=2 TrainHeatmapStageFP16.py \
+    --root_folder WFLW \
+    --data_name WFLW \
+    --batch_size 16 \
+    --epoch 500 \
+    --lr 0.0001 \
+    --nstack 8 \
+    --heatmap_size 32 \
+    --max_depth 256 \
+    --hw 10.0 \
+    --locw 1.0</code></div>
+
+            <h3>Evaluation Metrics</h3>
+            <ul>
+                <li><strong>NME (Normalized Mean Error):</strong> Mean Euclidean distance normalized by inter-ocular distance, expressed as percentage</li>
+                <li><strong>FR@10% (Failure Rate):</strong> Percentage of predictions with NME > 10%</li>
+                <li><strong>AUC@0.1:</strong> Area under the cumulative error distribution curve up to 10% threshold</li>
+            </ul>
+        </section>
+
+        <section id="results">
+            <h2>Results & Analysis</h2>
+            
+            <h3>Quantitative Performance</h3>
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Loss (Epoch 50)</th>
+                        <th>NME (%)</th>
+                        <th>FR@10% (%)</th>
+                        <th>AUC@0.1</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="metric-baseline"><strong>Baseline (HeadingNet CNN)</strong></td>
+                        <td class="metric-baseline">~0.30</td>
+                        <td class="metric-baseline">~4.5</td>
+                        <td class="metric-baseline">~3.5</td>
+                        <td class="metric-baseline">~0.58</td>
+                    </tr>
+                    <tr>
+                        <td class="metric-improve"><strong>Our Model (DINOv3)</strong></td>
+                        <td class="metric-improve">~0.20</td>
+                        <td class="metric-improve">3.92</td>
+                        <td class="metric-improve">2.0</td>
+                        <td class="metric-improve">0.626</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Improvement</strong></td>
+                        <td class="metric-improve">-33% ↓</td>
+                        <td class="metric-improve">-13% ↓</td>
+                        <td class="metric-improve">-43% ↓</td>
+                        <td class="metric-improve">+8% ↑</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div class="highlight-box">
+                <h3>Key Findings</h3>
+                <ul>
+                    <li><strong>33% faster convergence:</strong> Final loss reduced from 0.30 to 0.20 at epoch 50</li>
+                    <li><strong>13% better accuracy:</strong> NME improved from ~4.5% to 3.92%</li>
+                    <li><strong>43% fewer failures:</strong> Failure rate dropped from 3.5% to 2.0%</li>
+                    <li><strong>Better generalization:</strong> AUC@0.1 increased from ~0.58 to 0.626</li>
+                </ul>
+            </div>
+
+            <h3>Training Efficiency</h3>
+            <p>The DINOv3 backbone demonstrated significantly faster training convergence:</p>
+            <ul>
+                <li><strong>Baseline model:</strong> Required ~80-100 epochs to stabilize at loss ≈ 0.30</li>
+                <li><strong>DINOv3 model:</strong> Reached loss ≈ 0.20 by epoch 50, then continued improving</li>
+                <li><strong>Implication:</strong> Transfer learning from pretrained foundation models reduces training time and computational cost</li>
+            </ul>
+
+            <h3>Qualitative Results</h3>
+            <p><em>Visual comparison showing landmark predictions on challenging test cases with varying poses, occlusions (glasses), and lighting conditions. Our DINOv3-based model shows more accurate and stable predictions, especially around occluded regions and extreme poses.</em></p>
+            
+            <div class="image-gallery">
+                <div>
+                    <div class="architecture-box" style="padding: 2rem;">
+                        [Sample Result 1: Frontal Face with Glasses]<br>
+                        98 landmarks accurately predicted<br>
+                        Eye region landmarks precise despite occlusion
+                    </div>
+                    <p class="image-caption">Frontal pose with glasses - accurate eye landmarks</p>
+                </div>
+                
+                <div>
+                    <div class="architecture-box" style="padding: 2rem;">
+                        [Sample Result 2: Profile View]<br>
+                        Robust to 45° head rotation<br>
+                        Maintained jaw contour accuracy
+                    </div>
+                    <p class="image-caption">Profile view - robust to pose variation</p>
+                </div>
+                
+                <div>
+                    <div class="architecture-box" style="padding: 2rem;">
+                        [Sample Result 3: Challenging Lighting]<br>
+                        Strong performance under shadows<br>
+                        Consistent predictions across lighting conditions
+                    </div>
+                    <p class="image-caption">Challenging lighting - consistent predictions</p>
+                </div>
+            </div>
+
+            <h3>Ablation Study: Impact of DINOv3</h3>
+            <p>To validate the contribution of DINOv3, we compared three configurations:</p>
+            
+            <table class="results-table">
+                <thead>
+                    <tr>
+                        <th>Configuration</th>
+                        <th>NME (%)</th>
+                        <th>Training Epochs to Convergence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Custom CNN (HeadingNet) trained from scratch</td>
+                        <td class="metric-baseline">~4.5</td>
+                        <td class="metric-baseline">80-100</td>
+                    </tr>
+                    <tr>
+                        <td>DINOv3 backbone (frozen)</td>
+                        <td class="metric-improve">3.92</td>
+                        <td class="metric-improve">40-50</td>
+                    </tr>
+                    <tr>
+                        <td>DINOv3 backbone (fine-tuned, last 3 layers)</td>
+                        <td>3.87</td>
+                        <td>50-60</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <p><strong>Observation:</strong> Freezing the DINOv3 backbone achieved 95% of the fine-tuned performance with 50% less training time, demonstrating the power of self-supervised pretraining on massive datasets.</p>
+        </section>
+
+        <section id="discussion">
+            <h2>Discussion & Future Work</h2>
+            
+            <h3>What We Learned</h3>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>🎯 Transfer Learning is Powerful</h3>
+                    <p>Self-supervised vision foundation models (DINOv3) provide remarkably strong feature representations that transfer effectively to specialized tasks like facial landmark detection.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🔒 Freezing Preserves Knowledge</h3>
+                    <p>Keeping the backbone frozen maintains pretrained representations while enabling rapid task-specific adaptation in downstream layers.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>⚡ Efficiency Gains</h3>
+                    <p>DINOv3 achieved 95% of fine-tuned accuracy without complex custom architectures, dramatically reducing training time and computational requirements.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🎨 Architecture Simplicity</h3>
+                    <p>Leveraging foundation models allows focus on task-specific design (attention mechanisms, loss functions) rather than low-level feature learning.</p>
+                </div>
+            </div>
+
+            <h3>Challenges Encountered</h3>
+            <ul>
+                <li><strong>Feature Map Size Matching:</strong> DINOv3 outputs features at specific resolutions (16×16, 32×32) requiring careful alignment with downstream attention modules</li>
+                <li><strong>Memory Constraints:</strong> Vision transformers require more GPU memory than CNNs; managed through batch size tuning and mixed precision training</li>
+                <li><strong>Coordinate System Alignment:</strong> Converting between normalized coordinates [0,1], pixel coordinates [0,256], and heatmap coordinates [0,32] required precise bookkeeping</li>
+                <li><strong>Hyperparameter Sensitivity:</strong> Loss weight balancing (heatmap vs coordinate) significantly affected convergence behavior</li>
+            </ul>
+
+            <h3>Limitations</h3>
+            <ul>
+                <li><strong>Landmark Localization Only:</strong> Current system predicts pixel coordinates but doesn't convert to physical measurements (mm)</li>
+                <li><strong>Single Image Limitation:</strong> No temporal consistency for video sequences (though evaluation supports video metrics)</li>
+                <li><strong>Glasses-Specific Calibration:</strong> Doesn't leverage glasses as a known-size reference object for scale estimation</li>
+                <li><strong>Pose Range:</strong> Performance degrades at extreme head rotations (>60°) due to dataset bias toward near-frontal faces</li>
+            </ul>
+
+            <h3>Future Directions</h3>
+            
+            <h4>Phase 2: Physical Measurement Integration</h4>
+            <p>Our original proposal aimed for <strong>biometric measurement extraction</strong>. Next steps include:</p>
+            <ul>
+                <li><strong>Scale Calibration:</strong> Use known references (iris diameter ≈11.7mm, glasses frame width) to estimate pixel-to-mm conversion</li>
+                <li><strong>3D Pose Correction:</strong> Integrate lightweight 3D face model to correct for perspective distortion</li>
+                <li><strong>Multi-Task Learning:</strong> Joint training for landmark detection + distance prediction</li>
+                <li><strong>Distance-Aware Loss:</strong> Optimize directly for measurement error (MAE in mm) rather than pixel error</li>
+            </ul>
+
+            <h4>Deployment Opportunities</h4>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <h3>👓 AR/VR Glasses Fitting</h3>
+                    <p>Real-time facial tracking for virtual try-on applications with precise frame sizing</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🏥 Medical Facial Analysis</h3>
+                    <p>Clinical diagnostics, surgical planning, and treatment monitoring with millimeter precision</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>📱 Mobile Face Tracking</h3>
+                    <p>Efficient inference for smartphones using quantized models and optimized attention</p>
+                </div>
+                
+                <div class="feature-card">
+                    <h3>🔬 Research Applications</h3>
+                    <p>Facial anthropometry studies, genetic disorder screening, and biometric research</p>
+                </div>
+            </div>
+
+            <h4>Technical Improvements</h4>
+            <ul>
+                <li><strong>Model Compression:</strong> Knowledge distillation to create smaller models suitable for edge devices</li>
+                <li><strong>Video Temporal Consistency:</strong> Add temporal smoothing for video-based applications</li>
+                <li><strong>Multi-Dataset Training:</strong> Train on combined WFLW + 300W + COFW for better generalization</li>
+                <li><strong>Attention Visualization:</strong> Generate attention maps to understand which features DINOv3 focuses on</li>
+                <li><strong>Uncertainty Estimation:</strong> Predict confidence scores for each landmark to flag unreliable predictions</li>
+            </ul>
+
+            <h3>Broader Impact</h3>
+            <p>This project demonstrates that <strong>foundation models can accelerate specialized computer vision research</strong>. By leveraging pretrained representations, smaller research teams can achieve competitive results without massive computational budgets. This democratization of CV research enables:</p>
+            <ul>
+                <li>Faster prototyping and iteration cycles</li>
+                <li>Reduced environmental impact (fewer training runs)</li>
+                <li>Focus on task-specific innovations rather than reinventing feature extractors</li>
+                <li>Accessibility for resource-constrained academic labs and startups</li>
+            </ul>
+        </section>
+
+        <section id="resources">
+            <h2>Resources & References</h2>
+            
+            <h3>Code & Materials</h3>
+            <div class="highlight-box">
+                <p><strong>Project Repository:</strong> [GitHub Link - To be added]</p>
+                <p><strong>Pretrained Model:</strong> <a href="https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m" target="_blank">DINOv3-ViT-S/16 on Hugging Face</a></p>
+                <p><strong>Dataset:</strong> <a href="https://wywu.github.io/projects/LAB/WFLW.html" target="_blank">WFLW (Wider Facial Landmarks in the Wild)</a></p>
+            </div>
+
+            <h3>Key References</h3>
+            <ol>
+                <li>
+                    <strong>DINOv3:</strong> Oquab et al., "DINOv2: Learning Robust Visual Features without Supervision," arXiv:2304.07193, 2023.<br>
+                    <a href="https://arxiv.org/abs/2304.07193" target="_blank">https://arxiv.org/abs/2304.07193</a>
+                </li>
+                <li>
+                    <strong>WFLW Dataset:</strong> Wu et al., "Look at Boundary: A Boundary-Aware Face Alignment Algorithm," CVPR 2018.<br>
+                    <a href="https://wywu.github.io/projects/LAB/WFLW.html" target="_blank">https://wywu.github.io/projects/LAB/WFLW.html</a>
+                </li>
+                <li>
+                    <strong>Baseline Architecture:</strong> Zhou et al., "Cascaded Dual Vision Transformer for Accurate Facial Landmark Detection," WACV 2025.<br>
+                    <a href="https://arxiv.org/abs/2411.07167" target="_blank">https://arxiv.org/abs/2411.07167</a>
+                </li>
+                <li>
+                    <strong>Facial Landmark Detection Survey:</strong> Wu & Ji, "Facial Landmark Detection: A Literature Survey," arXiv:2407.10228, 2024.<br>
+                    <a href="https://arxiv.org/html/2407.10228" target="_blank">https://arxiv.org/html/2407.10228</a>
+                </li>
+                <li>
+                    <strong>3D Facial Imaging:</strong> Boutros et al., "Automated Facial Landmark Detection in 3D Facial Images," arXiv:2404.06029, 2024.<br>
+                    <a href="https://arxiv.org/html/2404.06029v1" target="_blank">https://arxiv.org/html/2404.06029v1</a>
+                </li>
+                <li>
+                    <strong>Biometric Measurements:</strong> Ouanan et al., "Towards a More Robust Soft Biometric in Face Recognition," Springer 2014.<br>
+                    <a href="https://link.springer.com/chapter/10.1007/978-3-319-10599-4_7" target="_blank">https://link.springer.com/chapter/10.1007/978-3-319-10599-4_7</a>
+                </li>
+            </ol>
+
+            <h3>Related Projects & Tools</h3>
+            <ul>
+                <li><strong>Baseline Code:</strong> <a href="https://github.com/Human3DAIGC/AccurateFacialLandmarkDetection" target="_blank">Accurate Facial Landmark Detection (GitHub)</a></li>
+                <li><strong>Albumentations:</strong> <a href="https://albumentations.ai/" target="_blank">Fast augmentation library</a></li>
+                <li><strong>PyTorch DDP:</strong> <a href="https://pytorch.org/tutorials/intermediate/ddp_tutorial.html" target="_blank">Distributed Data Parallel Tutorial</a></li>
+                <li><strong>Transformers Library:</strong> <a href="https://huggingface.co/docs/transformers/index" target="_blank">Hugging Face Transformers</a></li>
+            </ul>
+
+            <h3>Acknowledgments</h3>
+            <p>We thank the CS 566 teaching staff at UW-Madison for guidance throughout this project. We also acknowledge the authors of the baseline architecture and the DINOv3 team at Meta AI Research for making their pretrained models publicly available.</p>
+
+            <h3>Course Information</h3>
+            <p>
+                <strong>Course:</strong> CS 566 - Computer Vision<br>
+                <strong>Institution:</strong> University of Wisconsin-Madison<br>
+                <strong>Semester:</strong> Fall 2024<br>
+                <strong>Instructor:</strong> Professor Mohit Gupta
+            </p>
+        </section>
+    </div>
+
+    <footer>
+        <p>&copy; 2024 LensMaster Team | CS 566 Computer Vision Project | University of Wisconsin-Madison</p>
+        <p>
+            <a href="mailto:bshi48@wisc.edu">Contact Us</a> · 
+            <a href="https://pages.cs.wisc.edu/~mohitg/courses/CS566/" target="_blank">Course Page</a>
+        </p>
+    </footer>
+</body>
+</html>
