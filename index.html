@@ -460,6 +460,7 @@
             <li><a href="#implementation">Implementation</a></li>
             <li><a href="#results">Results</a></li>
             <li><a href="#discussion">Discussion</a></li>
+            <li><a href="#presentation">Final Presentation</a></li>
             <li><a href="#resources">Resources</a></li>
         </ul>
     </nav>
@@ -468,10 +469,10 @@
         <section id="abstract">
             <h2>Abstract</h2>
             <div class="highlight-box">
-                <p><strong>TL;DR:</strong> We developed LensMaster, a facial landmark detection system that integrates Meta's DINOv3 vision transformer as a pretrained backbone to achieve more accurate and robust facial feature localization. Our approach demonstrates significant improvements in training efficiency and prediction accuracy compared to custom CNN backbones, laying the foundation for precise biometric measurements from facial images.</p>
+                <p><strong>TL;DR:</strong> We developed LensMaster, a facial landmark detection system that integrates Meta's DINOv3 vision transformer as a pretrained backbone to achieve more accurate and robust facial feature localization. Our approach demonstrates significant improvements in training efficiency and prediction accuracy compared to custom CNN backbones, serving as a strong stepping stone toward future biometric measurement extraction from facial images.</p>
             </div>
             
-            <p>Facial landmark detection is fundamental to numerous computer vision applications, from biometric authentication to medical diagnostics. While existing methods achieve reasonable localization accuracy, they often struggle with robustness across varying poses, lighting conditions, and occlusions. Additionally, most approaches focus on pixel-level localization without considering the downstream requirement of converting these predictions into precise physical measurements.</p>
+            <p>Facial landmark detection is fundamental to numerous computer vision applications, from biometric authentication to medical diagnostics. While existing methods achieve reasonable localization accuracy, they often struggle with robustness across varying poses, lighting conditions, and occlusions. Additionally, most approaches focus on pixel-level localization; bridging those predictions to calibrated physical measurements requires explicit scale/pose handling that is often out of scope for standard landmark benchmarks.</p>
             
             <p>Our project addresses these limitations by leveraging transfer learning from foundation models. We replaced the standard CNN backbone in a state-of-the-art facial landmark detection framework with Meta's DINOv3 (Vision Transformer), which was pretrained on 142 million diverse images using self-supervised learning. This modification resulted in faster convergence during training, lower final loss values (~0.2 vs ~0.3), and improved landmark prediction accuracy, achieving <strong>3.92% NME (Normalized Mean Error)</strong> on the WFLW dataset.</p>
 
@@ -556,7 +557,7 @@
 
             <h3>Architecture Overview</h3>
             <div class="architecture-box">
-                <p><strong>Input (256×256 RGB)</strong> → <strong>DINOv3 Backbone (Frozen)</strong> → <strong>Feature Projection (256 channels)</strong> → <strong>8-Stage Attention Refinement</strong> → <strong>Heatmap Prediction + Coordinate Regression</strong> → <strong>98 Landmark Coordinates</strong></p>
+                <p><strong>Input (512×512 RGB)</strong> → <strong>DINOv3 Backbone (Frozen)</strong> → <strong>Feature Projection (256 channels)</strong> → <strong>8-Stage Attention Refinement</strong> → <strong>Heatmap Prediction + Coordinate Regression</strong> → <strong>98 Landmark Coordinates</strong></p>
             </div>
 
             <h3>Technical Components</h3>
@@ -608,7 +609,6 @@
                 <li><strong>Mixed Precision (FP16):</strong> Accelerate training with automatic mixed precision</li>
                 <li><strong>EMA (Exponential Moving Average):</strong> Stabilize predictions with decay=0.99</li>
                 <li><strong>Distributed Training:</strong> Multi-GPU training with PyTorch DDP</li>
-                <li><strong>Data Augmentation:</strong> Extensive augmentation via Albumentations (rotation ±20°, scale 0.8-1.2, color jitter, Gaussian noise, weather effects)</li>
             </ul>
 
             <h3>What Makes This Different</h3>
@@ -700,7 +700,7 @@
                     </tr>
                     <tr>
                         <td>Epochs</td>
-                        <td>500 (early stopping around epoch 50)</td>
+                        <td>~70 (best checkpoint selected by lowest NME; saved as checkpoint/best_model.pth)</td>
                     </tr>
                     <tr>
                         <td>LR Scheduler</td>
@@ -720,35 +720,6 @@
                     </tr>
                 </tbody>
             </table>
-
-            <h3>Key Code Modifications</h3>
-            
-            <h4>Backbone Replacement</h4>
-            <div class="code-block"><code># Original: Custom CNN backbone (HeadingNet)
-backbone_net = lambda max_depth: HeadingNet([32, 64, max_depth])
-
-# Modified: DINOv3 Transformer backbone
-backbone_net = lambda max_depth: DINOBackbone(
-    out_channels=max_depth, 
-    model_name='facebook/dinov3-vits16-pretrain-lvd1689m',
-    freeze=True,           # Freeze pretrained weights
-    target_size=32,        # Output feature map size
-    input_size=512,        # DINO native resolution (32×16=512)
-)</code></div>
-
-            <h4>Training Command</h4>
-            <div class="code-block"><code># Distributed training on 2 GPUs
-torchrun --nproc_per_node=2 TrainHeatmapStageFP16.py \
-    --root_folder WFLW \
-    --data_name WFLW \
-    --batch_size 16 \
-    --epoch 500 \
-    --lr 0.0001 \
-    --nstack 8 \
-    --heatmap_size 32 \
-    --max_depth 256 \
-    --hw 10.0 \
-    --locw 1.0</code></div>
 
             <h3>Evaluation Metrics</h3>
             <ul>
@@ -821,29 +792,24 @@ torchrun --nproc_per_node=2 TrainHeatmapStageFP16.py \
             <div class="image-gallery">
                 <div>
                     <div class="architecture-box" style="padding: 2rem;">
-                        [Sample Result 1: Frontal Face with Glasses]<br>
-                        98 landmarks accurately predicted<br>
-                        Eye region landmarks precise despite occlusion
+                        <img src="8b42541c-7ec5-413a-ba80-9cf49fc03bd9.jpg" type="image/jpg">
+
                     </div>
-                    <p class="image-caption">Frontal pose with glasses - accurate eye landmarks</p>
+                    <p class="image-caption">Frontal pose - accurate eye landmarks</p>
                 </div>
                 
                 <div>
                     <div class="architecture-box" style="padding: 2rem;">
-                        [Sample Result 2: Profile View]<br>
-                        Robust to 45° head rotation<br>
-                        Maintained jaw contour accuracy
+                        <img class="img-contain" src="00e9f1cb-6d80-4cf7-88c6-197d77ff83aa.png" alt="Profile view - robust to pose variation">
                     </div>
-                    <p class="image-caption">Profile view - robust to pose variation</p>
+                    <p class="image-caption">Heatmap visualization - robust to pose variation</p>
                 </div>
                 
                 <div>
                     <div class="architecture-box" style="padding: 2rem;">
-                        [Sample Result 3: Challenging Lighting]<br>
-                        Strong performance under shadows<br>
-                        Consistent predictions across lighting conditions
+                        <img src="4ba0dd91-1e7a-4a75-8507-eb3f4249cb6d.jpg" type="image/jpg">
                     </div>
-                    <p class="image-caption">Challenging lighting - consistent predictions</p>
+                    <p class="image-caption">Profile view under challenging lighting</p>
                 </div>
             </div>
 
@@ -975,12 +941,25 @@ torchrun --nproc_per_node=2 TrainHeatmapStageFP16.py \
             </ul>
         </section>
 
+
+        <section id="presentation">
+            <h2>Final Presentation</h2>
+
+            <p>This section contains our final presentation video. To enable playback on GitHub Pages, place the video file in the same directory as this <code>index.html</code> (or adjust the <code>src</code> path accordingly), then commit and push it to the repository.</p>
+
+            <div class="highlight-box">
+                <h3>Presentation Video</h3>
+                <video controls preload="metadata" style="width: 100%; border-radius: 12px; box-shadow: 0 2px 12px rgba(0,0,0,0.12);">
+                    <source src="final_presentation.mp4" type="video/mp4">
+                </video>
+            </div>
+
         <section id="resources">
             <h2>Resources & References</h2>
             
             <h3>Code & Materials</h3>
             <div class="highlight-box">
-                <p><strong>Project Repository:</strong> [GitHub Link - To be added]</p>
+                <p><strong>Project Repository:</strong> <a href="https://github.com/xiongxu1998/AccurateFacialLandmarkDetection" target="_blank">https://github.com/xiongxu1998/AccurateFacialLandmarkDetection</a></p>
                 <p><strong>Pretrained Model:</strong> <a href="https://huggingface.co/facebook/dinov3-vits16-pretrain-lvd1689m" target="_blank">DINOv3-ViT-S/16 on Hugging Face</a></p>
                 <p><strong>Dataset:</strong> <a href="https://wywu.github.io/projects/LAB/WFLW.html" target="_blank">WFLW (Wider Facial Landmarks in the Wild)</a></p>
             </div>
@@ -1015,8 +994,7 @@ torchrun --nproc_per_node=2 TrainHeatmapStageFP16.py \
 
             <h3>Related Projects & Tools</h3>
             <ul>
-                <li><strong>Baseline Code:</strong> <a href="https://github.com/Human3DAIGC/AccurateFacialLandmarkDetection" target="_blank">Accurate Facial Landmark Detection (GitHub)</a></li>
-                <li><strong>Albumentations:</strong> <a href="https://albumentations.ai/" target="_blank">Fast augmentation library</a></li>
+                <li><strong>Our Code Repository:</strong> <a href="https://github.com/Human3DAIGC/AccurateFacialLandmarkDetection" target="_blank">Accurate Facial Landmark Detection (GitHub)</a></li>
                 <li><strong>PyTorch DDP:</strong> <a href="https://pytorch.org/tutorials/intermediate/ddp_tutorial.html" target="_blank">Distributed Data Parallel Tutorial</a></li>
                 <li><strong>Transformers Library:</strong> <a href="https://huggingface.co/docs/transformers/index" target="_blank">Hugging Face Transformers</a></li>
             </ul>
@@ -1028,7 +1006,7 @@ torchrun --nproc_per_node=2 TrainHeatmapStageFP16.py \
             <p>
                 <strong>Course:</strong> CS 566 - Computer Vision<br>
                 <strong>Institution:</strong> University of Wisconsin-Madison<br>
-                <strong>Semester:</strong> Fall 2024<br>
+                <strong>Semester:</strong> Fall 2025<br>
                 <strong>Instructor:</strong> Professor Mohit Gupta
             </p>
         </section>
